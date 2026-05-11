@@ -4,6 +4,7 @@
 
 import OpenAI from 'openai';
 import { createLogger } from '@/lib/logger';
+import { withLangfuseGeneration } from './observability';
 
 const logger = createLogger('grok');
 
@@ -60,16 +61,19 @@ export async function callGrokWithSchema<T>(opts: {
     // xAI supports json_object response_format. For strict schema enforcement
     // we embed the JSON structure reminder in the system prompt (same approach
     // as DeepSeek, since Grok doesn't support json_schema strict mode yet).
-    const res = await getClient().chat.completions.create({
-      model: DRAFTING_MODEL,
-      temperature,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      response_format: { type: 'json_object' },
-    });
+    const res = await withLangfuseGeneration(
+      { name: 'broadside-public.grok', provider: 'grok', model: DRAFTING_MODEL, systemPrompt, userMessage, temperature, maxTokens },
+      () => getClient().chat.completions.create({
+        model: DRAFTING_MODEL,
+        temperature,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    );
     stop();
 
     const content = res.choices[0]?.message?.content ?? '';

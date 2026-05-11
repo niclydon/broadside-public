@@ -89,7 +89,7 @@ async function upsertItem(
 export interface SyncResult {
   projects: { inserted: number; updated: number; unchanged: number };
   commits: { inserted: number; updated: number; unchanged: number };
-  shared-warehouse: { inserted: number; updated: number; unchanged: number };
+  'shared-warehouse': { inserted: number; updated: number; unchanged: number };
   external: { inserted: number; updated: number; unchanged: number };
   staleDeleted: number;
   embeddings: { embedded: number; failed: number };
@@ -101,9 +101,9 @@ export async function runFullSync(ctx?: JobContext): Promise<SyncResult> {
 
   const maxFileBytes = await getSetting<number>('ingest.max_file_bytes', 204800);
   const gitLimit = await getSetting<number>('ingest.git_commit_limit', 100);
-  const shared-warehouseEnabled = await getSetting<boolean>('ingest.shared-warehouse_enabled', true);
-  const shared-warehouseFactsLimit = await getSetting<number>('ingest.shared-warehouse_facts_limit', 200);
-  const shared-warehouseSummaryLimit = await getSetting<number>('ingest.shared-warehouse_summary_limit', 50);
+  const sharedWarehouseEnabled = await getSetting<boolean>('ingest.shared-warehouse_enabled', true);
+  const sharedWarehouseFactsLimit = await getSetting<number>('ingest.shared-warehouse_facts_limit', 200);
+  const sharedWarehouseSummaryLimit = await getSetting<number>('ingest.shared-warehouse_summary_limit', 50);
   const calendarPastDays = await getSetting<number>('ingest.calendar_past_days', 30);
   const calendarFutureDays = await getSetting<number>('ingest.calendar_future_days', 60);
   const silverGoldEnabled = await getSetting<boolean>('ingest.silver_gold_enabled', true);
@@ -191,7 +191,7 @@ export async function runFullSync(ctx?: JobContext): Promise<SyncResult> {
     }
   }
 
-  if (shared-warehouseEnabled) {
+  if (sharedWarehouseEnabled) {
     // Load existing fact external IDs for rotating-window ingestion
     const { rows: existingFactRows } = await getPool().query<{ external_id: string }>(
       `SELECT external_id FROM context_items WHERE kind = 'shared-warehouse_fact'`,
@@ -199,7 +199,7 @@ export async function runFullSync(ctx?: JobContext): Promise<SyncResult> {
     const existingFactIds = new Set(existingFactRows.map((r: { external_id: string }) => r.external_id));
     logger.logVerbose(`existing shared-warehouse_fact ids for rotation: ${existingFactIds.size}`);
 
-    const facts = await readKnowledgeFacts(shared-warehouseFactsLimit, existingFactIds);
+    const facts = await readKnowledgeFacts(sharedWarehouseFactsLimit, existingFactIds);
     await ingestWarehouseBatch(facts, 'knowledge_facts');
     await ctx?.setProgress(40, 100, 'shared-warehouse insights');
 
@@ -207,7 +207,7 @@ export async function runFullSync(ctx?: JobContext): Promise<SyncResult> {
     await ingestWarehouseBatch(insights, 'proactive_insights');
     await ctx?.setProgress(48, 100, 'shared-warehouse summaries');
 
-    const summaries = await readKnowledgeSummaries(shared-warehouseSummaryLimit);
+    const summaries = await readKnowledgeSummaries(sharedWarehouseSummaryLimit);
     await ingestWarehouseBatch(summaries, 'knowledge_summaries');
     await ctx?.setProgress(52, 100, 'behavioral dna');
 
@@ -338,7 +338,7 @@ export async function runFullSync(ctx?: JobContext): Promise<SyncResult> {
   const result: SyncResult = {
     projects: projectStats,
     commits: commitStats,
-    shared-warehouse: warehouseStats,
+    'shared-warehouse': warehouseStats,
     external: externalStats,
     staleDeleted,
     embeddings,

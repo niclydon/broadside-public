@@ -4,6 +4,7 @@
 
 import OpenAI from 'openai';
 import { createLogger } from '@/lib/logger';
+import { withLangfuseGeneration } from './observability';
 
 const logger = createLogger('openai');
 
@@ -68,23 +69,26 @@ export async function callOpenAIWithSchema<T>(opts: {
 
   const stop = logger.time(`gpt4o(${schemaName})`);
   try {
-    const res = await getClient().chat.completions.create({
-      model: DRAFTING_MODEL,
-      temperature,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: schemaName,
-          schema,
-          strict: true,
+    const res = await withLangfuseGeneration(
+      { name: `broadside-public.${schemaName}`, provider: 'openai', model: DRAFTING_MODEL, systemPrompt, userMessage, temperature, maxTokens },
+      () => getClient().chat.completions.create({
+        model: DRAFTING_MODEL,
+        temperature,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: schemaName,
+            schema,
+            strict: true,
+          },
         },
-      },
-    });
+      }),
+    );
     stop();
 
     const content = res.choices[0]?.message?.content ?? '';

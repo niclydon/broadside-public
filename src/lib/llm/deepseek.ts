@@ -3,6 +3,7 @@
 
 import OpenAI from 'openai';
 import { createLogger } from '@/lib/logger';
+import { withLangfuseGeneration } from './observability';
 
 const logger = createLogger('deepseek');
 
@@ -67,16 +68,19 @@ export async function callDeepSeekWithSchema<T>(opts: {
     // DeepSeek supports the OpenAI-compatible `response_format: { type: 'json_object' }`
     // but NOT json_schema strict mode. We rely on explicit instructions in the
     // system prompt plus JSON parsing to validate shape.
-    const res = await getClient().chat.completions.create({
-      model: DRAFTING_MODEL,
-      temperature,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      response_format: { type: 'json_object' },
-    });
+    const res = await withLangfuseGeneration(
+      { name: 'broadside-public.deepseek', provider: 'deepseek', model: DRAFTING_MODEL, systemPrompt, userMessage, temperature, maxTokens },
+      () => getClient().chat.completions.create({
+        model: DRAFTING_MODEL,
+        temperature,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    );
     stop();
 
     const content = res.choices[0]?.message?.content ?? '';

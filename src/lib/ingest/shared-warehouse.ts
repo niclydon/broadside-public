@@ -271,7 +271,7 @@ export async function readSilverGold(opts: {
           title,
           content: scrubbed.text,
           contentHash: sha256(scrubbed.text),
-          metadata: { shared-warehouse_view: v.name, tier: isGold ? 'gold' : 'silver', payload: r.payload },
+          metadata: { 'shared-warehouse_view': v.name, tier: isGold ? 'gold' : 'silver', payload: r.payload },
           occurredAt: new Date(r.occurred_at),
         });
       }
@@ -402,7 +402,7 @@ export async function readSilverClaude(): Promise<WarehouseItem[]> {
         title: (titleFromPayload || firstLine || table.name).slice(0, 120),
         content: scrubbed.text,
         contentHash: sha256(scrubbed.text),
-        metadata: { shared-warehouse_view: table.name, tier: 'silver', payload: r.payload },
+        metadata: { 'shared-warehouse_view': table.name, tier: 'silver', payload: r.payload },
         occurredAt: new Date(r.occurred_at),
       }];
     });

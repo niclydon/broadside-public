@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createLogger } from '@/lib/logger';
+import { withLangfuseGeneration } from './observability';
 
 const logger = createLogger('anthropic');
 
@@ -77,27 +78,30 @@ export async function callOpusWithTool<T>(opts: {
 
   const stop = logger.time(`opus(${toolName})`);
   try {
-    const res = await getClient().messages.create({
-      model: DRAFTING_MODEL,
-      max_tokens: maxTokens,
-      temperature,
-      system: [
-        {
-          type: 'text',
-          text: systemPrompt,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [{ role: 'user', content: userMessage }],
-      tools: [
-        {
-          name: toolName,
-          description: `Emit structured output for ${toolName}.`,
-          input_schema: toolInputSchema,
-        },
-      ],
-      tool_choice: { type: 'tool', name: toolName },
-    });
+    const res = await withLangfuseGeneration(
+      { name: `broadside-public.${toolName}`, provider: 'anthropic', model: DRAFTING_MODEL, systemPrompt, userMessage, temperature, maxTokens },
+      () => getClient().messages.create({
+        model: DRAFTING_MODEL,
+        max_tokens: maxTokens,
+        temperature,
+        system: [
+          {
+            type: 'text',
+            text: systemPrompt,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: [{ role: 'user', content: userMessage }],
+        tools: [
+          {
+            name: toolName,
+            description: `Emit structured output for ${toolName}.`,
+            input_schema: toolInputSchema,
+          },
+        ],
+        tool_choice: { type: 'tool', name: toolName },
+      }),
+    );
     stop();
 
     const toolUse = res.content.find((block) => block.type === 'tool_use');
