@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { createLogger } from '@/lib/logger';
+import { getLangfuse } from '@/lib/tracing/langfuse';
 
 const logger = createLogger('embeddings');
 
@@ -57,11 +58,38 @@ async function embedViaLocalModelGateway(texts: string[]): Promise<EmbedResult> 
 export async function embedBatch(texts: string[]): Promise<EmbedResult> {
   if (texts.length === 0) return { vectors: [], model: FORGE_MODEL, provider: 'local-model-gateway' };
   const stop = logger.time(`embed(${texts.length})`);
+  const lf = getLangfuse();
+  const trace = lf?.trace({
+    name: 'broadside-public.embeddings',
+    input: {
+      count: texts.length,
+      input_chars: texts.reduce((sum, text) => sum + text.length, 0),
+    },
+    metadata: {
+      provider: 'local-model-gateway',
+      model: FORGE_MODEL,
+      vector_contents: 'suppressed',
+    },
+  });
+  const generation = trace?.generation({
+    name: 'broadside-public.embeddings.local-model-gateway',
+    model: FORGE_MODEL,
+    input: {
+      count: texts.length,
+      input_chars: texts.reduce((sum, text) => sum + text.length, 0),
+    },
+    metadata: { provider: 'local-model-gateway', vector_contents: 'suppressed' },
+  });
   try {
     const result = await embedViaLocalModelGateway(texts);
+    generation?.end({ output: { count: result.vectors.length, dimensions: result.vectors[0]?.length ?? 0 } });
+    trace?.update({ output: { count: result.vectors.length, dimensions: result.vectors[0]?.length ?? 0 } });
+    lf?.flushAsync();
     stop();
     return result;
   } catch (localModelGatewayErr) {
+    generation?.end({ level: 'ERROR', statusMessage: (localModelGatewayErr as Error).message });
+    lf?.flushAsync();
     stop();
     logger.logMinimal('local-model-gateway embed error:', (localModelGatewayErr as Error).message);
     throw localModelGatewayErr;

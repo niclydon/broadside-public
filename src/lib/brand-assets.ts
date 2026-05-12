@@ -14,6 +14,7 @@ import {
 } from '@/lib/minio/client';
 import imageSize from 'image-size';
 import { createLogger } from '@/lib/logger';
+import { getLangfuse } from '@/lib/tracing/langfuse';
 
 const logger = createLogger('brand-assets');
 
@@ -288,6 +289,18 @@ export async function describeImage(data: Buffer, mimeType: string): Promise<str
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), VLM_TIMEOUT_MS);
+  const lf = getLangfuse();
+  const trace = lf?.trace({
+    name: 'broadside-public.brand-assets.describe',
+    input: { image_bytes: data.length, image_format: fmt },
+    metadata: { provider: 'local-model-gateway', model: 'describe', image_contents: 'suppressed' },
+  });
+  const generation = trace?.generation({
+    name: 'local-model-gateway.describe',
+    model: 'describe',
+    input: { image_bytes: data.length, image_format: fmt },
+    metadata: { image_contents: 'suppressed' },
+  });
   try {
     const res = await fetch(`${gatewayBase}/describe`, {
       method: 'POST',
@@ -304,8 +317,16 @@ export async function describeImage(data: Buffer, mimeType: string): Promise<str
     }
     const json = (await res.json()) as { description?: string };
     if (!json.description) throw new Error('local model gateway response missing "description"');
-    return json.description.trim();
+    const description = json.description.trim();
+    const output = { description_chars: description.length };
+    generation?.end({ output });
+    trace?.update({ output });
+    return description;
+  } catch (err) {
+    generation?.end({ level: 'ERROR', statusMessage: (err as Error).message });
+    throw err;
   } finally {
+    lf?.flushAsync();
     clearTimeout(timer);
   }
 }

@@ -2,6 +2,7 @@
 // directly — avoids pulling in a heavy SDK. Structured output via response_schema.
 
 import { createLogger } from '@/lib/logger';
+import { withLangfuseGeneration } from './observability';
 
 const logger = createLogger('gemini');
 
@@ -68,77 +69,90 @@ export async function callGeminiWithSchema<T>(opts: {
     maxTokens = 8000,
   } = opts;
 
-  const stop = logger.time('gemini-2.5-pro');
-  try {
-    const url = `${BASE_URL}/models/${DRAFTING_MODEL}:generateContent?key=${apiKey}`;
-    const body = {
-      systemInstruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMessage }],
-        },
-      ],
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
-        responseMimeType: 'application/json',
-        responseSchema: sanitizeSchemaForGemini(schema),
-      },
-    };
+  return withLangfuseGeneration(
+    {
+      name: 'broadside-public.gemini',
+      provider: 'gemini',
+      model: DRAFTING_MODEL,
+      systemPrompt,
+      userMessage,
+      temperature,
+      maxTokens,
+    },
+    async () => {
+      const stop = logger.time('gemini-2.5-pro');
+      try {
+        const url = `${BASE_URL}/models/${DRAFTING_MODEL}:generateContent?key=${apiKey}`;
+        const body = {
+          systemInstruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: userMessage }],
+            },
+          ],
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+            responseMimeType: 'application/json',
+            responseSchema: sanitizeSchemaForGemini(schema),
+          },
+        };
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`gemini HTTP ${res.status}: ${errText.slice(0, 400)}`);
-    }
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`gemini HTTP ${res.status}: ${errText.slice(0, 400)}`);
+        }
 
-    const data = (await res.json()) as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ text?: string }> };
-        finishReason?: string;
-      }>;
-      usageMetadata?: {
-        promptTokenCount?: number;
-        candidatesTokenCount?: number;
-      };
-    };
-    stop();
+        const data = (await res.json()) as {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+            finishReason?: string;
+          }>;
+          usageMetadata?: {
+            promptTokenCount?: number;
+            candidatesTokenCount?: number;
+          };
+        };
+        stop();
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    if (!text) {
-      throw new Error(
-        `gemini returned no text. finishReason=${data.candidates?.[0]?.finishReason}`,
-      );
-    }
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+        if (!text) {
+          throw new Error(
+            `gemini returned no text. finishReason=${data.candidates?.[0]?.finishReason}`,
+          );
+        }
 
-    let parsed: T;
-    try {
-      parsed = JSON.parse(text) as T;
-    } catch (err) {
-      throw new Error(`gemini returned invalid JSON: ${(err as Error).message}`);
-    }
+        let parsed: T;
+        try {
+          parsed = JSON.parse(text) as T;
+        } catch (err) {
+          throw new Error(`gemini returned invalid JSON: ${(err as Error).message}`);
+        }
 
-    const usage = {
-      input_tokens: data.usageMetadata?.promptTokenCount ?? 0,
-      output_tokens: data.usageMetadata?.candidatesTokenCount ?? 0,
-    };
-    const cost = computeCost(usage);
-    logger.log(
-      `gemini done: in=${usage.input_tokens} out=${usage.output_tokens} cost=$${cost.toFixed(4)}`,
-    );
+        const usage = {
+          input_tokens: data.usageMetadata?.promptTokenCount ?? 0,
+          output_tokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+        };
+        const cost = computeCost(usage);
+        logger.log(
+          `gemini done: in=${usage.input_tokens} out=${usage.output_tokens} cost=$${cost.toFixed(4)}`,
+        );
 
-    return { parsed, usage, cost_usd: cost };
-  } catch (err) {
-    stop();
-    logger.logMinimal('gemini error:', (err as Error).message);
-    throw err;
-  }
+        return { parsed, usage, cost_usd: cost };
+      } catch (err) {
+        stop();
+        logger.logMinimal('gemini error:', (err as Error).message);
+        throw err;
+      }
+    },
+  );
 }
