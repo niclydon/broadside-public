@@ -8,6 +8,15 @@ to show the product shape, schema, prompt strategy, and app structure without
 shipping any operator identity, internal infrastructure details, or live
 credentials.
 
+> **Snapshot edition.** The code in this repository is a snapshot of the
+> private Broadside system as of **August 1, 2026** (version 0.5.14 of this
+> public cut). The private system is under active development and has moved
+> well past this snapshot; this edition was documentation-refreshed on
+> October 18, 2026. See [SNAPSHOT.md](SNAPSHOT.md) for provenance and
+> [docs/what-changed-since-2026-08.md](docs/what-changed-since-2026-08.md)
+> for an honest summary of where the private system went next. The snapshot
+> pattern: curated, scrubbed, provenance-stamped, and honest about its date.
+
 ## Public Showcase Safety
 
 - Treat this repo as a code and architecture reference, not a production-ready
