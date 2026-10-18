@@ -189,14 +189,26 @@ interface RssFeed {
 }
 
 function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
+  // Plain-text extraction for feed content; output is never rendered as
+  // HTML. Remove script/style blocks and strip tags until stable so split
+  // or nested tags cannot survive, then decode entities with &amp; last.
+  let text = html;
+  let prev: string;
+  do {
+    prev = text;
+    text = text.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ');
+  } while (text !== prev);
+  do {
+    prev = text;
+    text = text.replace(/<[^>]*>/g, ' ');
+  } while (text !== prev);
+  return text
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
 }

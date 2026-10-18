@@ -55,7 +55,20 @@ export async function POST(req: Request) {
   const name = typeof body.name === 'string' ? body.name.trim() : null;
   const source = typeof body.source === 'string' ? body.source : 'manual';
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  // Manual validation instead of a nested-quantifier regex (which CodeQL
+  // flags for polynomial backtracking on adversarial input).
+  const atParts = email.split('@');
+  const domain = atParts.length === 2 ? atParts[1] : '';
+  const emailValid =
+    email.length <= 254 &&
+    atParts.length === 2 &&
+    atParts[0].length > 0 &&
+    domain.length > 0 &&
+    domain.includes('.') &&
+    !domain.startsWith('.') &&
+    !domain.endsWith('.') &&
+    !/\s/.test(email);
+  if (!emailValid) {
     return NextResponse.json({ error: 'valid email required' }, { status: 400 });
   }
 
