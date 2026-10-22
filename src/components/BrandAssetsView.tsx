@@ -494,7 +494,7 @@ function VlmDescriptionBlock({ asset }: { asset: BrandAsset }) {
         </button>
       </div>
       <p className="text-xs italic text-[#a8a4a0]">
-        {description ?? <span className="text-[#6b6b7a] not-italic">no description yet — click "generate"</span>}
+        {description ?? <span className="text-[#6b6b7a] not-italic">no description yet — click &quot;generate&quot;</span>}
       </p>
       {generatedAt && (
         <p className="mt-1 text-[9px] text-[#6b6b7a]">{new Date(generatedAt).toLocaleString()}</p>
