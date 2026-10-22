@@ -58,7 +58,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { rows: cgRow } = await pool.query<{ content_group_id: string }>(
     `SELECT content_group_id FROM posts WHERE id = $1`, [id],
   );
-  let imageEmbeds: Array<{ blob: { $type: string; ref: { $link: string }; mimeType: string; size: number }; alt: string }> = [];
+  const imageEmbeds: Array<{ blob: { $type: string; ref: { $link: string }; mimeType: string; size: number }; alt: string }> = [];
   if (cgRow[0]?.content_group_id) {
     try {
       const mediaItems = await listMedia(cgRow[0].content_group_id);
