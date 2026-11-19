@@ -1,5 +1,11 @@
 # Broadside Public Showcase
 
+## 2026-11-19 (public cut 0.5.16)
+
+- Validate the Node 26 type declarations against the current Next.js build.
+- Keep Next.js 16's generated type references and required TypeScript settings
+  in sync with the production build.
+
 ## 2026-10-18 refresh (public cut 0.5.15)
 
 - Added LICENSE (MIT).
