@@ -1,5 +1,10 @@
 # Broadside Public Showcase
 
+## 2026-11-19 dependency repair (public cut 0.5.16)
+
+- Align Tiptap React, starter kit and extensions at 3.32.1. Their exact peer
+  requirements prevented clean installs when only React was updated.
+
 ## 2026-10-18 refresh (public cut 0.5.15)
 
 - Added LICENSE (MIT).
