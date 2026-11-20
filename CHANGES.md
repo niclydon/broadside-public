@@ -1,10 +1,10 @@
 # Broadside Public Showcase
 
-## 2026-11-19 (public cut 0.5.16)
+## 2026-11-19 dependency repair (public cut 0.5.16)
 
-- Validate the Node 26 type declarations against the current Next.js build.
-- Keep Next.js 16's generated type references and required TypeScript settings
-  in sync with the production build.
+- Align every Tiptap package (React, starter kit, extensions, core, pm) at
+  3.32.1. Their exact peer requirements prevented clean installs when one
+  package was updated alone. Carries #23/#24's alignment.
 
 ## 2026-10-18 refresh (public cut 0.5.15)
 
